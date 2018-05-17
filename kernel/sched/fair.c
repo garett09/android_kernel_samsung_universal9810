@@ -7375,7 +7375,7 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 
 		record_wakee(p);
 		want_affine = !wake_wide(p, sibling_count_hint) &&
-			      !wake_cap(p, cpu, prev_cpu) &&
+			      !_wake_cap &&
 			      cpumask_test_cpu(cpu, &p->cpus_allowed);
 	}
 
