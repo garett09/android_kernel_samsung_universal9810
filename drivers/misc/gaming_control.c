@@ -15,6 +15,7 @@
  *
  */
 
+#include <linux/binfmts.h>
 #include <linux/module.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
@@ -69,6 +70,9 @@ static int check_for_games(struct task_struct *tsk)
 {
 	char *cmdline;
 	int ret;
+
+	if (!is_zygote_pid(tsk->parent->pid))
+		return 0;
 
 	cmdline = kmalloc(GAME_LIST_LENGTH, GFP_KERNEL);
 	if (!cmdline)
