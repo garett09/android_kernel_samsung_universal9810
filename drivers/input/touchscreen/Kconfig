@@ -25,4 +25,8 @@ config TOUCHSCREEN_DUMP_MODE
 
 source "drivers/input/touchscreen/sec_ts/Kconfig"
 source "drivers/input/touchscreen/sec_ts/y771/Kconfig"
+
+config WAKE_GESTURES
+	bool "wake gestures"
+
 endif
