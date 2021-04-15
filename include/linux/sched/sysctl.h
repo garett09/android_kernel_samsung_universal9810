@@ -41,9 +41,9 @@ extern unsigned int sysctl_numa_balancing_scan_period_max;
 extern unsigned int sysctl_numa_balancing_scan_size;
 
 #ifdef CONFIG_SCHED_DEBUG
-extern __read_mostly unsigned int sysctl_sched_migration_cost;
-extern __read_mostly unsigned int sysctl_sched_nr_migrate;
-extern __read_mostly unsigned int sysctl_sched_time_avg;
+extern unsigned int sysctl_sched_migration_cost;
+extern unsigned int sysctl_sched_nr_migrate;
+extern unsigned int sysctl_sched_time_avg;
 extern unsigned int sysctl_sched_shares_window;
 
 int sched_proc_update_handler(struct ctl_table *table, int write,
@@ -64,6 +64,11 @@ extern int sysctl_sched_rt_runtime;
 extern unsigned int sysctl_sched_cfs_bandwidth_slice;
 #endif
 
+extern unsigned int sysctl_sched_global_boost;
+int sched_global_boost_handler(struct ctl_table *table, int write,
+			       void __user *buffer, size_t *lenp,
+			       loff_t *ppos);
+
 #ifdef CONFIG_SCHED_TUNE
 extern unsigned int sysctl_sched_cfs_boost;
 int sysctl_sched_cfs_boost_handler(struct ctl_table *table, int write,
@@ -82,6 +87,10 @@ static inline unsigned int get_sysctl_sched_cfs_boost(void)
 
 #ifdef CONFIG_SCHED_AUTOGROUP
 extern unsigned int sysctl_sched_autogroup_enabled;
+#endif
+#ifdef CONFIG_SCHED_USE_FLUID_RT
+extern unsigned int sysctl_rt_boost_threshold;
+extern unsigned int sysctl_sched_restrict_cluster_spill;
 #endif
 
 extern int sched_rr_timeslice;

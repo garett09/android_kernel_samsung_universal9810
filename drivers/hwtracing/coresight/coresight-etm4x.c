@@ -61,9 +61,9 @@ static void etm4_os_unlock(struct etmv4_drvdata *drvdata)
 
 static bool etm4_arch_supported(u8 arch)
 {
-	/* Mask out the minor version number */
-	switch (arch & 0xf0) {
+	switch (arch) {
 	case ETM_ARCH_V4:
+	case ETM_ARCH_V4_2:
 		break;
 	default:
 		return false;
@@ -181,14 +181,6 @@ static void etm4_enable_hw(void *info)
 	if (coresight_timeout(drvdata->base, TRCSTATR, TRCSTATR_IDLE_BIT, 0))
 		dev_err(drvdata->dev,
 			"timeout while waiting for Idle Trace Status\n");
-	/*
-	 * As recommended by section 4.3.7 ("Synchronization when using the
-	 * memory-mapped interface") of ARM IHI 0064D
-	 */
-	dsb(sy);
-	isb();
-
-	CS_LOCK(drvdata->base);
 
 	dev_dbg(drvdata->dev, "cpu: %d enable smp call done\n", drvdata->cpu);
 }
@@ -329,16 +321,10 @@ static void etm4_disable_hw(void *info)
 	/* EN, bit[0] Trace unit enable bit */
 	control &= ~0x1;
 
-	/*
-	 * Make sure everything completes before disabling, as recommended
-	 * by section 7.3.77 ("TRCVICTLR, ViewInst Main Control Register,
-	 * SSTATUS") of ARM IHI 0064D
-	 */
-	dsb(sy);
+	/* make sure everything completes before disabling */
+	mb();
 	isb();
 	writel_relaxed(control, drvdata->base + TRCPRGCTLR);
-
-	CS_LOCK(drvdata->base);
 
 	dev_dbg(drvdata->dev, "cpu: %d disable smp call done\n", drvdata->cpu);
 }
@@ -593,7 +579,6 @@ static void etm4_init_arch_data(void *info)
 	drvdata->nrseqstate = BMVAL(etmidr5, 25, 27);
 	/* NUMCNTR, bits[30:28] number of counters available for tracing */
 	drvdata->nr_cntr = BMVAL(etmidr5, 28, 30);
-	CS_LOCK(drvdata->base);
 }
 
 static void etm4_set_default_config(struct etmv4_config *config)
@@ -1076,6 +1061,21 @@ static struct amba_id etm4_ids[] = {
 		.id = 0x000bb959,
 		.mask = 0x000fffff,
 		.data	= "Cortex-A73 ETM v4.0",
+	},
+	{       /* ETM 4.0 - Cortex-A73 */
+		.id = 0x000bb959,
+		.mask = 0x000fffff,
+		.data = "ETM 4.0",
+	},
+	{       /* ETM 4.2 - Cortex-A55 */
+		.id = 0x000bbd05,
+		.mask = 0x000fffff,
+		.data = "ETM 4.2",
+	},
+	{       /* ETM 4.0 - Meerkat */
+		.id = 0x000ce002,
+		.mask = 0x000fffff,
+		.data = "ETM 4.0",
 	},
 	{ 0, 0},
 };

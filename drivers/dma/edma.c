@@ -1249,7 +1249,7 @@ static struct dma_async_tx_descriptor *edma_prep_dma_memcpy(
 static struct dma_async_tx_descriptor *edma_prep_dma_cyclic(
 	struct dma_chan *chan, dma_addr_t buf_addr, size_t buf_len,
 	size_t period_len, enum dma_transfer_direction direction,
-	unsigned long tx_flags)
+	unsigned long tx_flags, void *context)
 {
 	struct edma_chan *echan = to_edma_chan(chan);
 	struct device *dev = chan->device->dev;
@@ -2268,6 +2268,9 @@ static int edma_probe(struct platform_device *pdev)
 
 	ecc->default_queue = info->default_queue;
 
+	for (i = 0; i < ecc->num_slots; i++)
+		edma_write_slot(ecc, i, &dummy_paramset);
+
 	if (info->rsv) {
 		/* Set the reserved slots in inuse list */
 		rsv_slots = info->rsv->rsv_slots;
@@ -2278,12 +2281,6 @@ static int edma_probe(struct platform_device *pdev)
 				edma_set_bits(off, ln, ecc->slot_inuse);
 			}
 		}
-	}
-
-	for (i = 0; i < ecc->num_slots; i++) {
-		/* Reset only unused - not reserved - paRAM slots */
-		if (!test_bit(i, ecc->slot_inuse))
-			edma_write_slot(ecc, i, &dummy_paramset);
 	}
 
 	/* Clear the xbar mapped channels in unused list */

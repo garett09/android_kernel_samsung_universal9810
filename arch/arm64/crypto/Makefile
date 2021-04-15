@@ -8,6 +8,9 @@
 # published by the Free Software Foundation.
 #
 
+#Keep this at the top
+obj-$(CONFIG_CRYPTO_FIPS) += first_file_asm.o
+
 obj-$(CONFIG_CRYPTO_SHA1_ARM64_CE) += sha1-ce.o
 sha1-ce-y := sha1-ce-glue.o sha1-ce-core.o
 
@@ -30,6 +33,9 @@ aes-ce-blk-y := aes-glue-ce.o aes-ce.o
 obj-$(CONFIG_CRYPTO_AES_ARM64_NEON_BLK) += aes-neon-blk.o
 aes-neon-blk-y := aes-glue-neon.o aes-neon.o
 
+obj-$(CONFIG_CRYPTO_SPECK_NEON) += speck-neon.o
+speck-neon-y := speck-neon-core.o speck-neon-glue.o
+
 AFLAGS_aes-ce.o		:= -DINTERLEAVE=4
 AFLAGS_aes-neon.o	:= -DINTERLEAVE=4
 
@@ -41,3 +47,9 @@ CFLAGS_crc32-arm64.o	:= -mcpu=generic+crc
 
 $(obj)/aes-glue-%.o: $(src)/aes-glue.c FORCE
 	$(call if_changed_rule,cc_o_c)
+
+# KASAN White list
+KASAN_SANITIZE_sha2-ce-glue.o := n
+
+#Keep this at the bottom
+obj-$(CONFIG_CRYPTO_FIPS) += last_file_asm.o

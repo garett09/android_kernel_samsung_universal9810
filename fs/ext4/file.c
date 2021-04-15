@@ -31,6 +31,10 @@
 #include "xattr.h"
 #include "acl.h"
 
+#ifdef CONFIG_EXT4_DLP
+#include "ext4_dlp.h"
+#endif
+
 /*
  * Called when an inode is released. Note that this is different
  * from ext4_file_open: open gets called at every open, but release
@@ -79,7 +83,7 @@ ext4_unaligned_aio(struct inode *inode, struct iov_iter *from, loff_t pos)
 	struct super_block *sb = inode->i_sb;
 	int blockmask = sb->s_blocksize - 1;
 
-	if (pos >= ALIGN(i_size_read(inode), sb->s_blocksize))
+	if (pos >= i_size_read(inode))
 		return 0;
 
 	if ((pos | iov_iter_alignment(from)) & blockmask)
@@ -163,13 +167,6 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	}
 
 	ret = __generic_file_write_iter(iocb, from);
-	/*
-	 * Unaligned direct AIO must be the only IO in flight. Otherwise
-	 * overlapping aligned IO after unaligned might result in data
-	 * corruption.
-	 */
-	if (ret == -EIOCBQUEUED && unaligned_aio)
-		ext4_unwritten_wait(inode);
 	inode_unlock(inode);
 
 	if (ret > 0)
@@ -362,10 +359,24 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 			ext4_journal_stop(handle);
 		}
 	}
+
+#ifdef CONFIG_EXT4_DLP
+	if (ext4_test_inode_flag(inode, EXT4_DLP_FL)) {
+		int ret = ext4_dlp_open(inode, filp);
+
+		if (ret < 0) {
+			pr_err("DLP %s: return [%d]\n", __func__, ret);
+			return ret;
+		}
+	}
+#endif
+
 	if (ext4_encrypted_inode(inode)) {
 		ret = fscrypt_get_encryption_info(inode);
-		if (ret)
+		if (ret) {
+			printk(KERN_ERR	"%s:failed to get encryption info (%d)", __func__, ret);
 			return -EACCES;
+		}
 		if (!fscrypt_has_encryption_key(inode))
 			return -ENOKEY;
 	}

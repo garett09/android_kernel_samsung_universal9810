@@ -119,23 +119,13 @@ static unsigned long super_cache_count(struct shrinker *shrink,
 	sb = container_of(shrink, struct super_block, s_shrink);
 
 	/*
-	 * We don't call trylock_super() here as it is a scalability bottleneck,
-	 * so we're exposed to partial setup state. The shrinker rwsem does not
-	 * protect filesystem operations backing list_lru_shrink_count() or
-	 * s_op->nr_cached_objects(). Counts can change between
-	 * super_cache_count and super_cache_scan, so we really don't need locks
-	 * here.
-	 *
-	 * However, if we are currently mounting the superblock, the underlying
-	 * filesystem might be in a state of partial construction and hence it
-	 * is dangerous to access it.  trylock_super() uses a MS_BORN check to
-	 * avoid this situation, so do the same here. The memory barrier is
-	 * matched with the one in mount_fs() as we don't hold locks here.
+	 * Don't call trylock_super as it is a potential
+	 * scalability bottleneck. The counts could get updated
+	 * between super_cache_count and super_cache_scan anyway.
+	 * Call to super_cache_count with shrinker_rwsem held
+	 * ensures the safety of call to list_lru_shrink_count() and
+	 * s_op->nr_cached_objects().
 	 */
-	if (!(sb->s_flags & MS_BORN))
-		return 0;
-	smp_rmb();
-
 	if (sb->s_op && sb->s_op->nr_cached_objects)
 		total_objects = sb->s_op->nr_cached_objects(sb, sc);
 
@@ -841,7 +831,14 @@ int do_remount_sb2(struct vfsmount *mnt, struct super_block *sb, int flags, void
 			     sb->s_type->name, retval);
 		}
 	}
+
+#ifdef CONFIG_FIVE
+	sb->s_flags = (sb->s_flags & ~MS_RMT_MASK) |
+				(flags & MS_RMT_MASK) | MS_I_VERSION;
+#else
 	sb->s_flags = (sb->s_flags & ~MS_RMT_MASK) | (flags & MS_RMT_MASK);
+#endif
+
 	/* Needs to be ordered wrt mnt_is_readonly() */
 	smp_wmb();
 	sb->s_readonly_remount = 0;
@@ -1000,6 +997,45 @@ static int ns_set_super(struct super_block *sb, void *data)
 	sb->s_fs_info = data;
 	return set_anon_super(sb, NULL);
 }
+
+#ifdef CONFIG_PROC_PARSE_OPTION_ON_MOUNT
+struct dentry *mount_ns_option(struct file_system_type *fs_type,
+	int flags, void *data, void *ns, struct user_namespace *user_ns,
+	int (*fill_super)(struct super_block *, void *, int),
+	int (*parse_options)(char *, struct pid_namespace *))
+{
+	struct super_block *sb;
+
+	/* Don't allow mounting unless the caller has CAP_SYS_ADMIN
+	 * over the namespace.
+	 */
+	if (!(flags & MS_KERNMOUNT) && !ns_capable(user_ns, CAP_SYS_ADMIN))
+		return ERR_PTR(-EPERM);
+
+	sb = sget_userns(fs_type, ns_test_super, ns_set_super, flags,
+			 user_ns, ns);
+	if (IS_ERR(sb))
+		return ERR_CAST(sb);
+
+	if (!parse_options(data, get_pid_ns(sb->s_fs_info)))
+		return ERR_PTR(-EINVAL);
+
+	if (!sb->s_root) {
+		int err;
+		err = fill_super(sb, data, flags & MS_SILENT ? 1 : 0);
+		if (err) {
+			deactivate_locked_super(sb);
+			return ERR_PTR(err);
+		}
+
+		sb->s_flags |= MS_ACTIVE;
+	}
+
+	return dget(sb->s_root);
+}
+
+EXPORT_SYMBOL(mount_ns_option);
+#endif
 
 struct dentry *mount_ns(struct file_system_type *fs_type,
 	int flags, void *data, void *ns, struct user_namespace *user_ns,
@@ -1221,14 +1257,6 @@ mount_fs(struct file_system_type *type, int flags, const char *name, struct vfsm
 	sb = root->d_sb;
 	BUG_ON(!sb);
 	WARN_ON(!sb->s_bdi);
-
-	/*
-	 * Write barrier is for super_cache_count(). We place it before setting
-	 * MS_BORN as the data dependency between the two functions is the
-	 * superblock structure contents that we just set up, not the MS_BORN
-	 * flag.
-	 */
-	smp_wmb();
 	sb->s_flags |= MS_BORN;
 
 	error = security_sb_kern_mount(sb, flags, secdata);

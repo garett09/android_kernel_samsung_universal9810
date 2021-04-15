@@ -29,6 +29,10 @@ config SUSPEND_SKIP_SYNC
 	  of suspend, or they are content with invoking sync() from
 	  user-space before invoking suspend.  Say Y if that's your case.
 
+config WAKELOCK
+	bool
+	default y
+
 config HIBERNATE_CALLBACKS
 	bool
 
@@ -106,7 +110,6 @@ config PM_SLEEP
 	def_bool y
 	depends on SUSPEND || HIBERNATE_CALLBACKS
 	select PM
-	select SRCU
 
 config PM_SLEEP_SMP
 	def_bool y
@@ -313,3 +316,10 @@ config PM_GENERIC_DOMAINS_OF
 
 config CPU_PM
 	bool
+
+config FOTA_LIMIT
+	bool "Fota limit information node"
+	default n
+	help
+	  Add sysfs to notify limit information to recovery module
+	  /sys/power/fota_limit

@@ -334,6 +334,12 @@ static int __vb2_queue_alloc(struct vb2_queue *q, enum vb2_memory memory,
 	struct vb2_buffer *vb;
 	int ret;
 
+	q->timeline_max = 0;
+	q->timeline = sync_timeline_create("vb2");
+	if (!q->timeline) {
+		dprintk(1, "Failed to create timeline\n");
+		return 0;
+	}
 	/* Ensure that q->num_buffers+num_buffers is below VB2_MAX_FRAME */
 	num_buffers = min_t(unsigned int, num_buffers,
 			    VB2_MAX_FRAME - q->num_buffers);
@@ -529,6 +535,12 @@ static int __vb2_queue_free(struct vb2_queue *q, unsigned int buffers)
 		q->memory = 0;
 		INIT_LIST_HEAD(&q->queued_list);
 	}
+
+	if (q->timeline) {
+		sync_timeline_put(q->timeline);
+		q->timeline = NULL;
+	}
+
 	return 0;
 }
 
@@ -914,9 +926,12 @@ void vb2_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state state)
 	dprintk(4, "done processing on buffer %d, state: %d\n",
 			vb->index, state);
 
-	/* sync buffers */
-	for (plane = 0; plane < vb->num_planes; ++plane)
-		call_void_memop(vb, finish, vb->planes[plane].mem_priv);
+	if (state != VB2_BUF_STATE_QUEUED &&
+	    state != VB2_BUF_STATE_REQUEUEING) {
+		/* sync buffers */
+		for (plane = 0; plane < vb->num_planes; ++plane)
+			call_void_memop(vb, finish, vb->planes[plane].mem_priv);
+	}
 
 	spin_lock_irqsave(&q->done_lock, flags);
 	if (state == VB2_BUF_STATE_QUEUED ||
@@ -928,6 +943,7 @@ void vb2_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state state)
 		vb->state = state;
 	}
 	atomic_dec(&q->owned_by_drv_count);
+	sync_timeline_signal(q->timeline, 1);
 	spin_unlock_irqrestore(&q->done_lock, flags);
 
 	trace_vb2_buf_done(q, vb);
@@ -1372,11 +1388,6 @@ int vb2_core_qbuf(struct vb2_queue *q, unsigned int index, void *pb)
 	struct vb2_buffer *vb;
 	int ret;
 
-	if (q->error) {
-		dprintk(1, "fatal error occurred on queue\n");
-		return -EIO;
-	}
-
 	vb = q->bufs[index];
 
 	switch (vb->state) {
@@ -1645,6 +1656,7 @@ EXPORT_SYMBOL_GPL(vb2_core_dqbuf);
  */
 static void __vb2_queue_cancel(struct vb2_queue *q)
 {
+	struct vb2_buffer *vb;
 	unsigned int i;
 
 	/*
@@ -1672,6 +1684,13 @@ static void __vb2_queue_cancel(struct vb2_queue *q)
 	q->start_streaming_called = 0;
 	q->queued_count = 0;
 	q->error = 0;
+
+	list_for_each_entry(vb, &q->queued_list, queued_entry) {
+		if (vb->acquire_fence) {
+			fput(vb->acquire_fence->file);
+			vb->acquire_fence = NULL;
+		}
+	}
 
 	/*
 	 * Remove all buffers from videobuf's list...
@@ -1916,13 +1935,9 @@ int vb2_mmap(struct vb2_queue *q, struct vm_area_struct *vma)
 			return -EINVAL;
 		}
 	}
-
-	mutex_lock(&q->mmap_lock);
-
 	if (vb2_fileio_is_active(q)) {
 		dprintk(1, "mmap: file io in progress\n");
-		ret = -EBUSY;
-		goto unlock;
+		return -EBUSY;
 	}
 
 	/*
@@ -1930,7 +1945,7 @@ int vb2_mmap(struct vb2_queue *q, struct vm_area_struct *vma)
 	 */
 	ret = __find_plane_by_offset(q, off, &buffer, &plane);
 	if (ret)
-		goto unlock;
+		return ret;
 
 	vb = q->bufs[buffer];
 
@@ -1943,13 +1958,11 @@ int vb2_mmap(struct vb2_queue *q, struct vm_area_struct *vma)
 	if (length < (vma->vm_end - vma->vm_start)) {
 		dprintk(1,
 			"MMAP invalid, as it would overflow buffer length\n");
-		ret = -EINVAL;
-		goto unlock;
+		return -EINVAL;
 	}
 
+	mutex_lock(&q->mmap_lock);
 	ret = call_memop(vb, mmap, vb->planes[plane].mem_priv, vma);
-
-unlock:
 	mutex_unlock(&q->mmap_lock);
 	if (ret)
 		return ret;

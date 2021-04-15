@@ -21,6 +21,7 @@
 #include <linux/usb.h>
 #include <linux/usb/audio.h>
 #include <linux/usb/audio-v2.h>
+#include <linux/usb/exynos_usb_audio.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -257,7 +258,7 @@ static int start_endpoints(struct snd_usb_substream *subs)
 			}
 		}
 
-		dev_dbg(&subs->dev->dev, "Starting sync EP @%p\n", ep);
+		dev_info(&subs->dev->dev, "Starting sync EP @%p\n", ep);
 
 		ep->sync_slave = subs->data_endpoint;
 		err = snd_usb_endpoint_start(ep);
@@ -313,9 +314,6 @@ static int search_roland_implicit_fb(struct usb_device *dev, int ifnum,
 	return 0;
 }
 
-/* Setup an implicit feedback endpoint from a quirk. Returns 0 if no quirk
- * applies. Returns 1 if a quirk was found.
- */
 static int set_sync_ep_implicit_fb_quirk(struct snd_usb_substream *subs,
 					 struct usb_device *dev,
 					 struct usb_interface_descriptor *altsd,
@@ -394,7 +392,7 @@ add_sync_ep:
 
 	subs->data_endpoint->sync_master = subs->sync_endpoint;
 
-	return 1;
+	return 0;
 }
 
 static int set_sync_endpoint(struct snd_usb_substream *subs,
@@ -433,10 +431,6 @@ static int set_sync_endpoint(struct snd_usb_substream *subs,
 	if (err < 0)
 		return err;
 
-	/* endpoint set by quirk */
-	if (err > 0)
-		return 0;
-
 	if (altsd->bNumEndpoints < 2)
 		return 0;
 
@@ -470,7 +464,6 @@ static int set_sync_endpoint(struct snd_usb_substream *subs,
 	}
 	ep = get_endpoint(alts, 1)->bEndpointAddress;
 	if (get_endpoint(alts, 0)->bLength >= USB_DT_ENDPOINT_AUDIO_SIZE &&
-	    get_endpoint(alts, 0)->bSynchAddress != 0 &&
 	    ((is_playback && ep != (unsigned int)(get_endpoint(alts, 0)->bSynchAddress | USB_DIR_IN)) ||
 	     (!is_playback && ep != (unsigned int)(get_endpoint(alts, 0)->bSynchAddress & ~USB_DIR_IN)))) {
 		dev_err(&dev->dev,
@@ -532,6 +525,9 @@ static int set_format(struct snd_usb_substream *subs, struct audioformat *fmt)
 				fmt->iface, fmt->altsetting, err);
 			return -EIO;
 		}
+		dev_info(&dev->dev, "setting usb interface %d:%d\n",
+			fmt->iface, fmt->altsetting);
+
 		subs->interface = -1;
 		subs->altset_idx = 0;
 	}
@@ -551,8 +547,14 @@ static int set_format(struct snd_usb_substream *subs, struct audioformat *fmt)
 				fmt->iface, fmt->altsetting, err);
 			return -EIO;
 		}
-		dev_dbg(&dev->dev, "setting usb interface %d:%d\n",
+		dev_info(&dev->dev, "setting usb interface %d:%d\n",
 			fmt->iface, fmt->altsetting);
+
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+		exynos_usb_audio_setintf(dev, fmt->iface, fmt->altsetting, subs->direction);
+		dev_info(&dev->dev, "Endpoint #%x / Direction : %d \n",
+						fmt->endpoint, subs->direction);
+#endif
 		subs->interface = fmt->iface;
 		subs->altset_idx = fmt->altset_idx;
 
@@ -581,6 +583,7 @@ static int set_format(struct snd_usb_substream *subs, struct audioformat *fmt)
 	return 0;
 }
 
+#ifndef CONFIG_SND_EXYNOS_USB_AUDIO
 /*
  * Return the score of matching two audioformats.
  * Veto the audioformat if:
@@ -726,6 +729,7 @@ static int configure_endpoint(struct snd_usb_substream *subs)
 
 	return ret;
 }
+#endif
 
 /*
  * hw_params callback
@@ -800,6 +804,28 @@ static int snd_usb_hw_free(struct snd_pcm_substream *substream)
 	return snd_pcm_lib_free_vmalloc_buffer(substream);
 }
 
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+static int snd_usb_audio_setrate(struct snd_usb_audio *chip, int iface,
+				struct usb_host_interface *alts,
+				struct audioformat *fmt, int rate)
+{
+	struct usb_device *dev = chip->dev;
+	unsigned int ep;
+	int err;
+
+	ep = get_endpoint(alts, 0)->bEndpointAddress;
+	err = exynos_usb_audio_setrate(iface, rate, fmt->altsetting);
+	if (err) {
+		dev_err(&dev->dev, "can not transfer sample rate to abox \n");
+		return err;
+	}
+	dev_info(&dev->dev, "[%s] iface : %d / alt : %d / set freq %d to ep #%x\n", __func__,
+			iface, fmt->altsetting, rate, ep);
+
+	return 0;
+}
+#endif
+
 /*
  * prepare callback
  *
@@ -813,6 +839,14 @@ static int snd_usb_pcm_prepare(struct snd_pcm_substream *substream)
 	struct usb_interface *iface;
 	int ret;
 
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+	ret = exynos_usb_audio_pcmbuf(subs->dev);
+	if (ret < 0) {
+		dev_err(&subs->dev->dev, "pcm buf transfer failed\n");
+		return ret;
+	}
+#endif
+
 	if (! subs->cur_audiofmt) {
 		dev_err(&subs->dev->dev, "no format is specified!\n");
 		return -ENXIO;
@@ -825,10 +859,10 @@ static int snd_usb_pcm_prepare(struct snd_pcm_substream *substream)
 		ret = -EIO;
 		goto unlock;
 	}
-
+#ifndef CONFIG_SND_EXYNOS_USB_AUDIO
 	snd_usb_endpoint_sync_pending_stop(subs->sync_endpoint);
 	snd_usb_endpoint_sync_pending_stop(subs->data_endpoint);
-
+#endif
 	ret = set_format(subs, subs->cur_audiofmt);
 	if (ret < 0)
 		goto unlock;
@@ -842,7 +876,17 @@ static int snd_usb_pcm_prepare(struct snd_pcm_substream *substream)
 				       subs->cur_rate);
 	if (ret < 0)
 		goto unlock;
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+	ret = snd_usb_audio_setrate(subs->stream->chip,
+					subs->cur_audiofmt->iface,
+					alts,
+					subs->cur_audiofmt,
+					subs->cur_rate);
+	if (ret < 0)
+		goto unlock;
+#endif
 
+#ifndef CONFIG_SND_EXYNOS_USB_AUDIO
 	if (subs->need_setup_ep) {
 		ret = configure_endpoint(subs);
 		if (ret < 0)
@@ -867,7 +911,7 @@ static int snd_usb_pcm_prepare(struct snd_pcm_substream *substream)
 	 * updates for all URBs would happen at the same time when starting */
 	if (subs->direction == SNDRV_PCM_STREAM_PLAYBACK)
 		ret = start_endpoints(subs);
-
+#endif
  unlock:
 	snd_usb_unlock_shutdown(subs->stream->chip);
 	return ret;
@@ -1249,6 +1293,9 @@ static int snd_usb_pcm_open(struct snd_pcm_substream *substream, int direction)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_usb_substream *subs = &as->substream[direction];
 
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+	exynos_usb_audio_pcm(1, direction);
+#endif
 	subs->interface = -1;
 	subs->altset_idx = 0;
 	runtime->hw = snd_usb_hardware;
@@ -1269,11 +1316,19 @@ static int snd_usb_pcm_close(struct snd_pcm_substream *substream, int direction)
 	struct snd_usb_stream *as = snd_pcm_substream_chip(substream);
 	struct snd_usb_substream *subs = &as->substream[direction];
 
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+	exynos_usb_audio_pcm(0, direction);
+#endif
 	stop_endpoints(subs, true);
 
 	if (subs->interface >= 0 &&
 	    !snd_usb_lock_shutdown(subs->stream->chip)) {
 		usb_set_interface(subs->dev, subs->interface, 0);
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+		dev_info(&subs->dev->dev, "setting usb interface %d:%d, Direction: %d\n",
+			subs->interface, 0, direction);
+		exynos_usb_audio_setintf(subs->dev, subs->interface, 0, direction);
+#endif
 		subs->interface = -1;
 		snd_usb_unlock_shutdown(subs->stream->chip);
 	}

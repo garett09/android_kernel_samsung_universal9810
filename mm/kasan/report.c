@@ -138,7 +138,7 @@ static void print_error_description(struct kasan_access_info *info)
 
 	pr_err("BUG: KASAN: %s in %pS\n",
 		bug_type, (void *)info->ip);
-	pr_err("%s of size %zu at addr %px by task %s/%d\n",
+	pr_err("%s of size %zu at addr %p by task %s/%d\n",
 		info->is_write ? "Write" : "Read", info->access_size,
 		info->access_addr, current->comm, task_pid_nr(current));
 }
@@ -210,7 +210,7 @@ static void describe_object_addr(struct kmem_cache *cache, void *object,
 	const char *rel_type;
 	int rel_bytes;
 
-	pr_err("The buggy address belongs to the object at %px\n"
+	pr_err("The buggy address belongs to the object at %p\n"
 	       " which belongs to the cache %s of size %d\n",
 		object, cache->name, cache->object_size);
 
@@ -229,7 +229,7 @@ static void describe_object_addr(struct kmem_cache *cache, void *object,
 	}
 
 	pr_err("The buggy address is located %d bytes %s of\n"
-	       " %d-byte region [%px, %px)\n",
+	       " %d-byte region [%p, %p)\n",
 		rel_bytes, rel_type, cache->object_size, (void *)object_addr,
 		(void *)(object_addr + cache->object_size));
 }
@@ -306,7 +306,7 @@ static void print_shadow_for_address(const void *addr)
 		char shadow_buf[SHADOW_BYTES_PER_ROW];
 
 		snprintf(buffer, sizeof(buffer),
-			(i == 0) ? ">%px: " : " %px: ", kaddr);
+			(i == 0) ? ">%p: " : " %p: ", kaddr);
 		/*
 		 * We should not pass a shadow pointer to generic
 		 * function, because generic functions may try to
@@ -325,6 +325,51 @@ static void print_shadow_for_address(const void *addr)
 		shadow_row += SHADOW_BYTES_PER_ROW;
 	}
 }
+#if defined(CONFIG_SEC_DEBUG_KASAN)
+
+struct kasandebug kasan_get_bug_type(struct kasan_access_info *info)
+{
+	struct kasandebug kasaninfo;
+	u8 *shadow_addr;
+
+	info->first_bad_addr = find_first_bad_addr(info->access_addr,
+						info->access_size);
+
+	shadow_addr = (u8 *)kasan_mem_to_shadow(info->first_bad_addr);
+
+	if (*shadow_addr > 0 && *shadow_addr <= KASAN_SHADOW_SCALE_SIZE - 1)
+		shadow_addr++;
+
+	switch (*shadow_addr) {
+	case 0 ... KASAN_SHADOW_SCALE_SIZE - 1:
+		kasaninfo.rType = KASAN_RTYPE_OUT_OF_BOUND;
+		break;
+	case KASAN_PAGE_REDZONE:
+	case KASAN_KMALLOC_REDZONE:
+		kasaninfo.rType = KASAN_RTYPE_SLAB_OUT_OF_BOUND;
+		break;
+	case KASAN_GLOBAL_REDZONE:
+		kasaninfo.rType = KASAN_RTYPE_GLOBAL_OUT_OF_BOUND;
+		break;
+	case KASAN_STACK_LEFT:
+	case KASAN_STACK_MID:
+	case KASAN_STACK_RIGHT:
+	case KASAN_STACK_PARTIAL:
+		kasaninfo.rType = KASAN_RTYPE_STACK_OUT_OF_BOUND;
+		break;
+	case KASAN_FREE_PAGE:
+	case KASAN_KMALLOC_FREE:
+		kasaninfo.rType = KASAN_RTYPE_USE_AFTER_FREE;
+		break;
+	case KASAN_USE_AFTER_SCOPE:
+		kasaninfo.rType = KASAN_RTYPE_USE_AFTER_SCOPE;
+		break;
+	}
+	snprintf(kasaninfo.ap,FILESIZE , "%pS\n",(void*)info->ip);
+
+	return kasaninfo;
+}
+#endif
 
 void kasan_report_double_free(struct kmem_cache *cache, void *object,
 				void *ip)
@@ -344,6 +389,10 @@ static void kasan_report_error(struct kasan_access_info *info)
 {
 	unsigned long flags;
 
+#if defined(CONFIG_SEC_DEBUG_KASAN)
+	struct kasandebug kasandebuginfo;
+#endif
+
 	kasan_start_report(&flags);
 
 	print_error_description(info);
@@ -358,6 +407,10 @@ static void kasan_report_error(struct kasan_access_info *info)
 	}
 
 	kasan_end_report(&flags);
+#if defined(CONFIG_SEC_DEBUG_KASAN)
+	kasandebuginfo = kasan_get_bug_type(info);
+	sec_debug_kasan_handler(&kasandebuginfo);
+#endif
 }
 
 static unsigned long kasan_flags;
@@ -405,7 +458,6 @@ void kasan_report(unsigned long addr, size_t size,
 	disable_trace_on_warning();
 
 	info.access_addr = (void *)addr;
-	info.first_bad_addr = (void *)addr;
 	info.access_size = size;
 	info.is_write = is_write;
 	info.ip = ip;
