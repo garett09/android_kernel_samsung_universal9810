@@ -232,7 +232,7 @@ switch_hrtimer_base(struct hrtimer *timer, struct hrtimer_clock_base *base,
 			!pinned && this_cpu_base->migration_enabled) {
 		int bound_cpu = 0;
 
-		if (unlikely(hrtimer_callback_running(timer)))
+		if (unlikely(hrtimer_callback_running_relaxed(timer)))
 			return base;
 
 		/* Use the nearest busy cpu to switch timer base
@@ -274,7 +274,7 @@ again:
 		 * completed. There is no conflict as we hold the lock until
 		 * the timer is enqueued.
 		 */
-		if (unlikely(hrtimer_callback_running(timer)))
+		if (unlikely(hrtimer_callback_running_relaxed(timer)))
 			return base;
 
 		/* See the comment in lock_hrtimer_base() */
@@ -1084,7 +1084,7 @@ int hrtimer_try_to_cancel(struct hrtimer *timer)
 
 	base = lock_hrtimer_base(timer, &flags);
 
-	if (!hrtimer_callback_running(timer))
+	if (!hrtimer_callback_running_relaxed(timer))
 		ret = remove_hrtimer(timer, base, false);
 
 	unlock_hrtimer_base(timer, &flags);
@@ -1684,7 +1684,7 @@ static void migrate_hrtimer_list(struct hrtimer_clock_base *old_base,
 
 	while ((node = timerqueue_getnext(&old_base->active))) {
 		timer = container_of(node, struct hrtimer, node);
-		BUG_ON(hrtimer_callback_running(timer));
+		BUG_ON(hrtimer_callback_running_relaxed(timer));
 		debug_deactivate(timer);
 
 		/*
