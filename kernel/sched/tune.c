@@ -6,6 +6,7 @@
 #include <linux/rcupdate.h>
 #include <linux/slab.h>
 #include <linux/ehmp.h>
+#include <linux/battery_saver.h>
 
 #include <trace/events/sched.h>
 
@@ -582,7 +583,7 @@ int schedtune_task_boost(struct task_struct *p)
 	struct schedtune *st;
 	int task_boost;
 
-	if (!unlikely(schedtune_initialized))
+	if (!unlikely(schedtune_initialized) || is_battery_saver_on())
 		return 0;
 
 	/* Get task boost value */
