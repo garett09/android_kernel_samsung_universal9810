@@ -4,6 +4,7 @@
 
 #include <linux/pm_qos.h>
 #include <linux/of.h>
+#include <linux/battery_saver.h>
 
 #ifdef CONFIG_SCHED_HMP
 #define USE_HMP_BOOST
@@ -270,7 +271,7 @@ static void input_booster_##_DEVICE_##_reset_booster_work_func(struct work_struc
 #define RUN_BOOSTER(_DEVICE_, _EVENT_) { \
 	if (_DEVICE_##_booster_dt.level > 0) { \
 		_DEVICE_##_booster.event_type = _EVENT_; \
-		(_EVENT_ == BOOSTER_ON)  ? _DEVICE_##_booster.multi_events++ : _DEVICE_##_booster.multi_events--; \
+		(_EVENT_ == BOOSTER_ON && !is_battery_saver_on())  ? _DEVICE_##_booster.multi_events++ : _DEVICE_##_booster.multi_events--; \
 		schedule_work(&_DEVICE_##_booster.input_booster_set_booster_work); \
 	} \
 }
