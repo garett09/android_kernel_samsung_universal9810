@@ -1,7 +1,7 @@
 VERSION = 4
 PATCHLEVEL = 9
 SUBLEVEL = 118
-EXTRAVERSION =
+EXTRAVERSION = Garett lang malakas 1.0
 NAME = Roaring Lionus
 
 # *DOCUMENTATION*
