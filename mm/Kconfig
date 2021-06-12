@@ -820,7 +820,7 @@ config VMPRESSURE_LEVEL_MED
 
 config VM_MAX_READAHEAD
 	int "Default max readahead window size"
-	default 128
+	default 64
 	help
 	  This sets the VM_MAX_READAHEAD value to allow the readahead window
 	  to grow to a maximum size of configured. This will benefit sequential
