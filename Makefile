@@ -1,7 +1,7 @@
 VERSION = 4
 PATCHLEVEL = 9
 SUBLEVEL = 118
-EXTRAVERSION =  -Abbys Kernel 5.0
+EXTRAVERSION =--Abbys Kernel 6.0
 NAME = Roaring Lionus
 
 # *DOCUMENTATION*
