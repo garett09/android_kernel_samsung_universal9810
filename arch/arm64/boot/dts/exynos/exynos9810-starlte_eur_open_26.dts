@@ -10377,17 +10377,17 @@
 			shared-cpus = "0-3";
 			boost_table = <0x64 0x91ff0 0x3c 0xae8f8 0x1e 0xcb200 0x14 0xe7b08 0xa 0x101148 0x0>;
 			up_rate_limit_table = <500>;
-			down_rate_limit_table = <2500>;
-			upscale_ratio_table = < 80 >;
+			down_rate_limit_table = <0>;
+			upscale_ratio_table = < 80 1248000 90 1456000 95 >;
 		};
 
 		domain@1 {
 			device_type = "freqvar-tune";
 			shared-cpus = "4-7";
 			boost_table = <0x14 0xd1790 0xf 0xeadd0 0x5 0x133dc8 0x0>;
-			up_rate_limit_table = <500>;
+			up_rate_limit_table = <8000>;
 			down_rate_limit_table = <2500>;
-			upscale_ratio_table = < 50 962000 65 1469000 80 >;
+			upscale_ratio_table = < 80 1261000 90 >;
 		};
 	};
 
@@ -13713,10 +13713,10 @@
 		fuelgauge,sw_v_empty_voltage = <0xc80>;
 		fuelgauge,sw_v_empty_voltage_cisd = <0xc1c>;
 		fuelgauge,sw_v_empty_recover_voltage = <0xd98>;
-		fuelgauge,qrtable20 = <0xa0c>;
-		fuelgauge,qrtable30 = <0x889>;
+		fuelgauge,qrtable20 = <0x0D80>;
+		fuelgauge,qrtable30 = <0x0D00>;
 		fuelgauge,fg_resistor = <0x2>;
-		fuelgauge,capacity = <0xb97>;
+		fuelgauge,capacity = <0x0BB8>;
 		fuelgauge,discharge_temp_threshold = <0x258>;
 		fuelgauge,discharge_volt_threshold = <0x1068>;
 		fuelgauge,ttf_capacity = <0xbb8>;
