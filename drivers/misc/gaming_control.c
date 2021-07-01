@@ -27,7 +27,7 @@
 
 #define GAME_LIST_LENGTH 1024
 #define NUM_SUPPORTED_RUNNING_GAMES 20
-#define GAMING_CONTROL_VERSION "0.2"
+#define GAMING_CONTROL_VERSION "0.3"
 
 #define TASK_STARTED 1
 
@@ -35,10 +35,12 @@
 struct pm_qos_request gaming_control_min_mif_qos;
 struct pm_qos_request gaming_control_min_big_qos;
 struct pm_qos_request gaming_control_max_big_qos;
+struct pm_qos_request gaming_control_min_little_qos;
 struct pm_qos_request gaming_control_max_little_qos;
 static unsigned int min_mif_freq = 1794000;
+static unsigned int min_little_freq = 949000;
 static unsigned int max_little_freq = 1456000;
-static unsigned int min_big_freq = 1703000;
+static unsigned int min_big_freq = 1794000;
 static unsigned int max_big_freq = 2002000;
 
 char games_list[GAME_LIST_LENGTH] = {0};
@@ -46,16 +48,21 @@ int games_pid[NUM_SUPPORTED_RUNNING_GAMES] = {
 	[0 ... (NUM_SUPPORTED_RUNNING_GAMES - 1)] = -1
 };
 static int nr_running_games = 0;
+int gaming_mode;
 
 static void set_gaming_mode(int mode)
 {
 	if (mode == 0) {
+		gaming_mode = mode;
 		pm_qos_update_request(&gaming_control_min_mif_qos, PM_QOS_BUS_THROUGHPUT_DEFAULT_VALUE);
+		pm_qos_update_request(&gaming_control_min_little_qos, PM_QOS_CLUSTER0_FREQ_MIN_DEFAULT_VALUE);
 		pm_qos_update_request(&gaming_control_max_little_qos, PM_QOS_CLUSTER0_FREQ_MAX_DEFAULT_VALUE);
 		pm_qos_update_request(&gaming_control_min_big_qos, PM_QOS_CLUSTER1_FREQ_MIN_DEFAULT_VALUE);
 		pm_qos_update_request(&gaming_control_max_big_qos, PM_QOS_CLUSTER1_FREQ_MAX_DEFAULT_VALUE);
 	} else if (mode == 1) {
+		gaming_mode = mode;
 		pm_qos_update_request(&gaming_control_min_mif_qos, min_mif_freq);
+		pm_qos_update_request(&gaming_control_min_little_qos, min_little_freq);
 		pm_qos_update_request(&gaming_control_max_little_qos, max_little_freq);
 		pm_qos_update_request(&gaming_control_min_big_qos, min_big_freq);
 		pm_qos_update_request(&gaming_control_max_big_qos, max_big_freq);
@@ -185,6 +192,7 @@ static ssize_t type##_show(struct kobject *kobj,		\
 }								\
 
 show_freq(min_mif_freq);
+show_freq(min_little_freq);
 show_freq(max_little_freq);
 show_freq(min_big_freq);
 show_freq(max_big_freq);
@@ -203,6 +211,7 @@ static ssize_t type##_store(struct kobject *kobj,				\
 }										\
 
 store_freq(min_mif_freq);
+store_freq(min_little_freq);
 store_freq(max_little_freq);
 store_freq(min_big_freq);
 store_freq(max_big_freq);
@@ -222,6 +231,9 @@ static struct kobj_attribute version_attribute =
 static struct kobj_attribute min_mif_freq_attribute =
 	__ATTR(min_mif, 0644, min_mif_freq_show, min_mif_freq_store);
 
+static struct kobj_attribute min_little_freq_attribute =
+	__ATTR(little_freq_min, 0644, min_little_freq_show, min_little_freq_store);
+
 static struct kobj_attribute max_little_freq_attribute =
 	__ATTR(little_freq_max, 0644, max_little_freq_show, max_little_freq_store);
 
@@ -235,6 +247,7 @@ static struct attribute *gaming_control_attributes[] = {
 	&game_packages_attribute.attr,
 	&version_attribute.attr,
 	&min_mif_freq_attribute.attr,
+	&min_little_freq_attribute.attr,
 	&max_little_freq_attribute.attr,
 	&min_big_freq_attribute.attr,
 	&max_big_freq_attribute.attr,
@@ -252,6 +265,7 @@ static int gaming_control_init(void)
 	int sysfs_result;
 
 	pm_qos_add_request(&gaming_control_min_mif_qos, PM_QOS_BUS_THROUGHPUT, PM_QOS_BUS_THROUGHPUT_DEFAULT_VALUE);
+	pm_qos_add_request(&gaming_control_min_little_qos, PM_QOS_CLUSTER0_FREQ_MIN, PM_QOS_CLUSTER0_FREQ_MIN_DEFAULT_VALUE);
 	pm_qos_add_request(&gaming_control_max_little_qos, PM_QOS_CLUSTER0_FREQ_MAX, PM_QOS_CLUSTER0_FREQ_MAX_DEFAULT_VALUE);
 	pm_qos_add_request(&gaming_control_min_big_qos, PM_QOS_CLUSTER1_FREQ_MIN, PM_QOS_CLUSTER1_FREQ_MIN_DEFAULT_VALUE);
 	pm_qos_add_request(&gaming_control_max_big_qos, PM_QOS_CLUSTER1_FREQ_MAX, PM_QOS_CLUSTER1_FREQ_MAX_DEFAULT_VALUE);
@@ -277,6 +291,7 @@ static int gaming_control_init(void)
 static void gaming_control_exit(void)
 {
 	pm_qos_remove_request(&gaming_control_min_mif_qos);
+	pm_qos_remove_request(&gaming_control_min_little_qos);
 	pm_qos_remove_request(&gaming_control_max_little_qos);
 	pm_qos_remove_request(&gaming_control_min_big_qos);
 	pm_qos_remove_request(&gaming_control_max_big_qos);
