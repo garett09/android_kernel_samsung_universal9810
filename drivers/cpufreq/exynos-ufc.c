@@ -18,6 +18,7 @@
 #include <linux/cpufreq.h>
 #include <linux/pm_opp.h>
 #include <linux/throttle_limit.h>
+#include <linux/gaming_control.h>
 #include <linux/ehmp.h>
 
 #include <soc/samsung/exynos-cpu_hotplug.h>
@@ -42,11 +43,17 @@ static unsigned int gpu_throttle_limit = 0;
 
 int get_big_throttle_limit(void)
 {
+	if(gaming_mode)
+		return min_big_freq;
+
 	return big_throttle_limit;
 }
 
 int get_little_throttle_limit(void)
 {
+	if(gaming_mode)
+		return min_little_freq;
+
 	return little_throttle_limit;
 }
 
