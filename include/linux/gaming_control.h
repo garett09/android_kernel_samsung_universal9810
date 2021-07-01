@@ -24,6 +24,12 @@ enum game_opts {
 	GAME_PAUSE
 };
 
+extern unsigned int min_mif_freq;
+extern unsigned int min_little_freq;
+extern unsigned int max_little_freq;
+extern unsigned int min_big_freq;
+extern unsigned int max_big_freq;
+
 #ifdef CONFIG_GAMING_CONTROL
 extern void game_option(struct task_struct *tsk, enum game_opts opts);
 extern int gaming_mode;

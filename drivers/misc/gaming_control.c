@@ -37,11 +37,11 @@ struct pm_qos_request gaming_control_min_big_qos;
 struct pm_qos_request gaming_control_max_big_qos;
 struct pm_qos_request gaming_control_min_little_qos;
 struct pm_qos_request gaming_control_max_little_qos;
-static unsigned int min_mif_freq = 1794000;
-static unsigned int min_little_freq = 949000;
-static unsigned int max_little_freq = 1456000;
-static unsigned int min_big_freq = 1794000;
-static unsigned int max_big_freq = 2002000;
+unsigned int min_mif_freq = 1794000;
+unsigned int min_little_freq = 949000;
+unsigned int max_little_freq = 1456000;
+unsigned int min_big_freq = 1794000;
+unsigned int max_big_freq = 2002000;
 
 char games_list[GAME_LIST_LENGTH] = {0};
 int games_pid[NUM_SUPPORTED_RUNNING_GAMES] = {
