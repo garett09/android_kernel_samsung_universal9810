@@ -48,25 +48,39 @@ int games_pid[NUM_SUPPORTED_RUNNING_GAMES] = {
 	[0 ... (NUM_SUPPORTED_RUNNING_GAMES - 1)] = -1
 };
 static int nr_running_games = 0;
-int gaming_mode;
+bool gaming_mode;
 
-static void set_gaming_mode(int mode)
+static void set_gaming_mode(bool mode)
 {
-	if (mode == 0) {
+	if (mode == gaming_mode)
+		return;
+	else
 		gaming_mode = mode;
-		pm_qos_update_request(&gaming_control_min_mif_qos, PM_QOS_BUS_THROUGHPUT_DEFAULT_VALUE);
-		pm_qos_update_request(&gaming_control_min_little_qos, PM_QOS_CLUSTER0_FREQ_MIN_DEFAULT_VALUE);
-		pm_qos_update_request(&gaming_control_max_little_qos, PM_QOS_CLUSTER0_FREQ_MAX_DEFAULT_VALUE);
-		pm_qos_update_request(&gaming_control_min_big_qos, PM_QOS_CLUSTER1_FREQ_MIN_DEFAULT_VALUE);
-		pm_qos_update_request(&gaming_control_max_big_qos, PM_QOS_CLUSTER1_FREQ_MAX_DEFAULT_VALUE);
-	} else if (mode == 1) {
-		gaming_mode = mode;
+
+	if(min_mif_freq > 0 && mode)
 		pm_qos_update_request(&gaming_control_min_mif_qos, min_mif_freq);
+	else
+		pm_qos_update_request(&gaming_control_min_mif_qos, PM_QOS_BUS_THROUGHPUT_DEFAULT_VALUE);
+	
+	if(min_little_freq > 0 && mode)
 		pm_qos_update_request(&gaming_control_min_little_qos, min_little_freq);
+	else
+		pm_qos_update_request(&gaming_control_min_little_qos, PM_QOS_CLUSTER0_FREQ_MIN_DEFAULT_VALUE);
+		
+	if(max_little_freq > 0 && mode)
 		pm_qos_update_request(&gaming_control_max_little_qos, max_little_freq);
+	else
+		pm_qos_update_request(&gaming_control_max_little_qos, PM_QOS_CLUSTER0_FREQ_MAX_DEFAULT_VALUE);
+	
+	if(min_big_freq > 0 && mode)
 		pm_qos_update_request(&gaming_control_min_big_qos, min_big_freq);
+	else
+		pm_qos_update_request(&gaming_control_min_big_qos, PM_QOS_CLUSTER1_FREQ_MIN_DEFAULT_VALUE);
+	
+	if(max_big_freq > 0 && mode)
 		pm_qos_update_request(&gaming_control_max_big_qos, max_big_freq);
-	}
+	else
+		pm_qos_update_request(&gaming_control_max_big_qos, PM_QOS_CLUSTER1_FREQ_MAX_DEFAULT_VALUE);
 }
 
 static void store_game_pid(int pid)
@@ -183,38 +197,38 @@ static ssize_t game_packages_store(struct kobject *kobj,
 	return count;
 }
 
-/* Show maximum freq */
-#define show_freq(type)						\
+/* Show value */
+#define show_value(type)						\
 static ssize_t type##_show(struct kobject *kobj,		\
 		struct kobj_attribute *attr, char *buf)		\
 {								\
 	return sprintf(buf, "%u\n", type);			\
 }								\
 
-show_freq(min_mif_freq);
-show_freq(min_little_freq);
-show_freq(max_little_freq);
-show_freq(min_big_freq);
-show_freq(max_big_freq);
+show_value(min_mif_freq);
+show_value(min_little_freq);
+show_value(max_little_freq);
+show_value(min_big_freq);
+show_value(max_big_freq);
 
-/* Store maximum freq */
-#define store_freq(type)							\
+/* Store value */
+#define store_value(type)							\
 static ssize_t type##_store(struct kobject *kobj,				\
 		struct kobj_attribute *attr, const char *buf, size_t count)	\
 {										\
-	unsigned int freq;							\
+	unsigned int value;							\
 										\
-	sscanf(buf, "%u\n", &freq);						\
-	type = freq;								\
+	sscanf(buf, "%u\n", &value);						\
+	type = value;								\
 										\
 	return count;								\
 }										\
 
-store_freq(min_mif_freq);
-store_freq(min_little_freq);
-store_freq(max_little_freq);
-store_freq(min_big_freq);
-store_freq(max_big_freq);
+store_value(min_mif_freq);
+store_value(min_little_freq);
+store_value(max_little_freq);
+store_value(min_big_freq);
+store_value(max_big_freq);
 
 static ssize_t version_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
