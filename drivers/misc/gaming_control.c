@@ -48,10 +48,14 @@ int games_pid[NUM_SUPPORTED_RUNNING_GAMES] = {
 	[0 ... (NUM_SUPPORTED_RUNNING_GAMES - 1)] = -1
 };
 static int nr_running_games = 0;
+static bool always_on = 0;
 bool gaming_mode;
 
 static void set_gaming_mode(bool mode)
 {
+	if(always_on)
+		mode = 1;
+
 	if (mode == gaming_mode)
 		return;
 	else
@@ -153,6 +157,11 @@ void game_option(struct task_struct *tsk, enum game_opts opts)
 
 	/* Remove all zombie tasks PIDs */
 	clear_dead_pids();
+	
+	if(always_on) {
+		set_gaming_mode(1);
+		return;
+	}
 
 	ret = check_for_games(tsk);
 	if (!ret)
@@ -205,6 +214,7 @@ static ssize_t type##_show(struct kobject *kobj,		\
 	return sprintf(buf, "%u\n", type);			\
 }								\
 
+show_value(always_on);
 show_value(min_mif_freq);
 show_value(min_little_freq);
 show_value(max_little_freq);
@@ -224,6 +234,7 @@ static ssize_t type##_store(struct kobject *kobj,				\
 	return count;								\
 }										\
 
+store_value(always_on);
 store_value(min_mif_freq);
 store_value(min_little_freq);
 store_value(max_little_freq);
@@ -241,6 +252,9 @@ static struct kobj_attribute game_packages_attribute =
 
 static struct kobj_attribute version_attribute =
 	__ATTR(version, 0444, version_show, NULL);
+	
+static struct kobj_attribute always_on_attribute =
+	__ATTR(always_on, 0644, always_on_show, always_on_store);
 
 static struct kobj_attribute min_mif_freq_attribute =
 	__ATTR(min_mif, 0644, min_mif_freq_show, min_mif_freq_store);
@@ -260,6 +274,7 @@ static struct kobj_attribute max_big_freq_attribute =
 static struct attribute *gaming_control_attributes[] = {
 	&game_packages_attribute.attr,
 	&version_attribute.attr,
+	&always_on_attribute.attr,
 	&min_mif_freq_attribute.attr,
 	&min_little_freq_attribute.attr,
 	&max_little_freq_attribute.attr,
