@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2019
  * Diep Quynh Nguyen <remilia.1505@gmail.com>
+ * Mustafa Gökmen <mustafa.gokmen2004@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
