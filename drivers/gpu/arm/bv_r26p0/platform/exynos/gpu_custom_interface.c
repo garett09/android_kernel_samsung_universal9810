@@ -18,6 +18,7 @@
 #include <mali_kbase.h>
 
 #include <linux/fb.h>
+#include <linux/throttle_limit.h>
 
 #include <linux/sysfs_helpers.h>
 
@@ -662,7 +663,6 @@ static ssize_t show_max_lock_dvfs(struct device *dev, struct device_attribute *a
 	return ret;
 }
 
-#define SUSTAINABLE_FREQ 385000 // KHz
 static ssize_t set_max_lock_dvfs(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	int ret, clock = 0;
@@ -681,8 +681,8 @@ static ssize_t set_max_lock_dvfs(struct device *dev, struct device_attribute *at
 			return -ENOENT;
 		}
 
-		if (clock < SUSTAINABLE_FREQ)
-			clock = SUSTAINABLE_FREQ;
+		if (clock < gpu_throttle_limit)
+			clock = gpu_throttle_limit;
 
 		platform->user_max_lock_input = clock;
 
@@ -1633,8 +1633,8 @@ static ssize_t set_kernel_sysfs_max_lock_dvfs(struct kobject *kobj, struct kobj_
 			return -ENOENT;
 		}
 		
-		if (clock < SUSTAINABLE_FREQ)
-			clock = SUSTAINABLE_FREQ;
+		if (clock < gpu_throttle_limit)
+			clock = gpu_throttle_limit;
 
 		platform->user_max_lock_input = clock;
 
