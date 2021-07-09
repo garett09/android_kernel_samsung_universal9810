@@ -555,7 +555,26 @@ int gpu_dvfs_get_stock_level(int clock)
 	}
 
 	return -1;
+}
 
+int gpu_dvfs_get_min_clock_limit(void)
+{
+	struct kbase_device *kbdev = pkbdev;
+	struct exynos_context *platform = (struct exynos_context *) kbdev->platform_context;
+
+	DVFS_ASSERT(platform);
+
+	return platform->gpu_min_clock_limit;
+}
+
+int gpu_dvfs_get_max_clock_limit(void)
+{
+	struct kbase_device *kbdev = pkbdev;
+	struct exynos_context *platform = (struct exynos_context *) kbdev->platform_context;
+
+	DVFS_ASSERT(platform);
+
+	return platform->gpu_max_clock_limit;
 }
 
 int gpu_dvfs_get_voltage(int clock)

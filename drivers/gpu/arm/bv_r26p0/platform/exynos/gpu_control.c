@@ -302,7 +302,6 @@ int gpu_control_disable_clock(struct kbase_device *kbdev)
 	return ret;
 }
 
-#ifdef CONFIG_MALI_ASV_CALIBRATION_SUPPORT
 int gpu_control_power_policy_set(struct kbase_device *kbdev, const char *buf)
 {
 	int ret = 0;
@@ -335,7 +334,6 @@ int gpu_control_power_policy_set(struct kbase_device *kbdev, const char *buf)
 
 	return ret;
 }
-#endif
 
 
 #endif
