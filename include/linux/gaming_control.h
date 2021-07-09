@@ -30,6 +30,12 @@ extern unsigned int min_little_freq;
 extern unsigned int max_little_freq;
 extern unsigned int min_big_freq;
 extern unsigned int max_big_freq;
+extern unsigned int min_gpu_freq;
+extern unsigned int max_gpu_freq;
+
+int gpu_custom_power_policy_set(const char *buf);
+int gpu_custom_min_clock(int gpu_min_clock);
+int gpu_custom_max_clock(int gpu_max_clock);
 
 #ifdef CONFIG_GAMING_CONTROL
 extern void game_option(struct task_struct *tsk, enum game_opts opts);

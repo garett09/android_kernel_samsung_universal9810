@@ -59,6 +59,9 @@ int get_little_throttle_limit(void)
 
 int get_gpu_throttle_limit(void)
 {
+	if(gaming_mode)
+		return min_gpu_freq;
+
 	return gpu_throttle_limit;
 }
 

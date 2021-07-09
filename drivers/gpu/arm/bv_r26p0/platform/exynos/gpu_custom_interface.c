@@ -19,6 +19,7 @@
 
 #include <linux/fb.h>
 #include <linux/throttle_limit.h>
+#include <linux/gaming_control.h>
 
 #include <linux/sysfs_helpers.h>
 
@@ -61,6 +62,9 @@ int gpu_pmqos_dvfs_min_lock(int level)
 		GPU_LOG(DVFS_ERROR, DUMMY, 0u, 0u, "%s: platform context is not initialized\n", __func__);
 		return -ENODEV;
 	}
+	
+	if (gaming_mode)
+		return 0;
 
 	clock = gpu_dvfs_get_clock(level);
 	if (clock < 0)
@@ -1101,6 +1105,9 @@ static ssize_t set_max_lock_dvfs(struct device *dev, struct device_attribute *at
 
 	if (!platform)
 		return -ENODEV;
+	
+	if (gaming_mode)
+		return count;
 
 	if (sysfs_streq("0", buf)) {
 		platform->user_max_lock_input = 0;
@@ -1173,6 +1180,9 @@ static ssize_t set_min_lock_dvfs(struct device *dev, struct device_attribute *at
 
 	if (!platform)
 		return -ENODEV;
+	
+	if (gaming_mode)
+		return count;
 
 	if (sysfs_streq("0", buf)) {
 		platform->user_min_lock_input = 0;
@@ -2061,6 +2071,9 @@ static ssize_t set_kernel_sysfs_max_lock_dvfs(struct kobject *kobj, struct kobj_
 
 	if (!platform)
 		return -ENODEV;
+	
+	if (gaming_mode)
+		return count;
 
 	if (sysfs_streq("0", buf)) {
 		platform->user_max_lock_input = 0;
@@ -2157,6 +2170,9 @@ static ssize_t set_kernel_sysfs_min_lock_dvfs(struct kobject *kobj, struct kobj_
 
 	if (!platform)
 		return -ENODEV;
+	
+	if (gaming_mode)
+		return count;
 
 	if (sysfs_streq("0", buf)) {
 		platform->user_min_lock_input = 0;
