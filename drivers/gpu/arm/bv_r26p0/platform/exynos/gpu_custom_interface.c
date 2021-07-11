@@ -681,8 +681,8 @@ static ssize_t set_max_lock_dvfs(struct device *dev, struct device_attribute *at
 			return -ENOENT;
 		}
 
-		if (clock < gpu_throttle_limit)
-			clock = gpu_throttle_limit;
+		if (clock < get_gpu_throttle_limit())
+			clock = get_gpu_throttle_limit();
 
 		platform->user_max_lock_input = clock;
 
@@ -1633,8 +1633,8 @@ static ssize_t set_kernel_sysfs_max_lock_dvfs(struct kobject *kobj, struct kobj_
 			return -ENOENT;
 		}
 		
-		if (clock < gpu_throttle_limit)
-			clock = gpu_throttle_limit;
+		if (clock < get_gpu_throttle_limit())
+			clock = get_gpu_throttle_limit();
 
 		platform->user_max_lock_input = clock;
 
