@@ -1,7 +1,7 @@
 VERSION = 4
 PATCHLEVEL = 9
 SUBLEVEL = 118
-EXTRAVERSION =-poopy69poopyyy 3.0
+EXTRAVERSION =-poopy69poopy 7.0
 NAME = Roaring Lionus
 
 # *DOCUMENTATION*
