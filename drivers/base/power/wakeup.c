@@ -1041,11 +1041,6 @@ bool pm_wakeup_pending(void)
 	}
 	spin_unlock_irqrestore(&events_lock, flags);
 
-	if (ret) {
-		pr_info("PM: Wakeup pending, aborting suspend\n");
-		pm_print_active_wakeup_sources();
-	}
-
 #ifdef CONFIG_SEC_PM_DEBUG
 	if (pm_abort_suspend) {
 		struct irq_desc *desc = irq_to_desc(pm_wakeup_irq);
