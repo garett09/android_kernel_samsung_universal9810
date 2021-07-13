@@ -96,6 +96,17 @@ typedef struct
 	void *pd;
 } MANAGER_NOTI_TYPEDEF;
 
+struct typec_manager_event_work
+{
+	struct work_struct typec_manager_work;
+	int src;
+	int dest;
+	int id;
+	int sub1;
+	int sub2;
+	int sub3;
+};
+
 typedef struct _manager_data_t
 {
 	struct blocking_notifier_head manager_muic_notifier;
