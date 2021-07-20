@@ -5130,7 +5130,7 @@
 			cal-id = <ACPM_DVFS_CPUCL0>;
 			dm-type = <DM_CPU_CL0>;
 
-			min-freq = <455000>;
+			min-freq = <208000>;
 
 			/* PM QoS Class ID*/
 			pm_qos-min-class = <3>;
@@ -5154,6 +5154,8 @@
 						   715000  546000
 						   598000  421000
 						   455000       0
+						   299000       0
+						   208000       0
 						   >;
 				};
 				mif-skew {
@@ -5170,7 +5172,7 @@
 			cal-id = <ACPM_DVFS_CPUCL1>;
 			dm-type = <DM_CPU_CL1>;
 
-			min-freq = <650000>;
+			min-freq = <598000>;
 			max-freq = <1794000>;
 			policy-max = <1794000>;
 
