@@ -74,24 +74,14 @@ __read_mostly unsigned int sysctl_sched_walt_cpu_high_irqload =
  * SCHED_TUNABLESCALING_LOG - scaled logarithmical, *1+ilog(ncpus)
  * SCHED_TUNABLESCALING_LINEAR - scaled linear, *ncpus
  */
-<<<<<<< HEAD
-enum sched_tunable_scaling sysctl_sched_tunable_scaling
-	= SCHED_TUNABLESCALING_LOG;
-=======
 enum sched_tunable_scaling sysctl_sched_tunable_scaling = SCHED_TUNABLESCALING_NONE;
->>>>>>> 446e18ac6b07... sched/fair: Make scheduling period more efficient
 
 /*
  * Minimal preemption granularity for CPU-bound tasks:
  * (default: 0.75 msec * (1 + ilog(ncpus)), units: nanoseconds)
  */
-<<<<<<< HEAD
-unsigned int sysctl_sched_min_granularity = 750000ULL;
-unsigned int normalized_sysctl_sched_min_granularity = 750000ULL;
-=======
 unsigned int sysctl_sched_min_granularity		= 1250000ULL;
 unsigned int normalized_sysctl_sched_min_granularity	= 1250000ULL;
->>>>>>> 446e18ac6b07... sched/fair: Make scheduling period more efficient
 
 /*
  * is kept at sysctl_sched_latency / sysctl_sched_min_granularity
