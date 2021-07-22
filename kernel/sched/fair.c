@@ -5216,7 +5216,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 #ifdef CONFIG_SMP
 	int task_new = flags & ENQUEUE_WAKEUP_NEW;
 #endif
-	bool prefer_iowait = schedtune_prefer_iowait(p) > 0;
+	bool prefer_idle = schedtune_prefer_idle(p) > 0;
 
 	/*
 	 * The code below (indirectly) updates schedutil which looks at
@@ -5251,7 +5251,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	 * utilization updates, so do it here explicitly with the IOWAIT flag
 	 * passed.
 	 */
-	if (p->in_iowait && prefer_iowait)
+	if (p->in_iowait && prefer_idle)
 		cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_IOWAIT);
 
 	for_each_sched_entity(se) {
