@@ -454,7 +454,6 @@ int max98512_wrapper_update(struct max98512_priv *max98512,
 			case MAX98512_SPK_PCM_GAIN_MASK:
 				moro_mode = 1;
 				break;
-			default:
 		}
 	}
 #endif
